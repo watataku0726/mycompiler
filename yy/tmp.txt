@@ -1,0 +1,191 @@
+<PREPROCESSOR>{
+    "define"        { BEGIN(MACRO); }
+    "if"            { list->StartPrePro(token::TK_PREPRO_IF); BEGIN(IF); }
+    "ifdef"         { list->StartPrePro(token::TK_PREPRO_IFDEF); BEGIN(IF); }
+    "ifndef"        { list->StartPrePro(token::TK_PREPRO_IFNDEF); BEGIN(IF); }
+    "include"       { BEGIN(INCLUDE); }
+    {blank}+        
+    \n              { list->LineBreak(); BEGIN(INITIAL); }
+    \\\n            { list->LineBreak(); }  
+    .               { list->Error("Unsupported PrePro."); }
+}
+<MACRO>{
+    {blank}+
+    \n              { list->Error("Identifier required."); }
+    \\\n            { list->LineBreak(); }  
+    "defined"       { list->Error("\"defined\" cannot be used as a macro name"); }
+
+    {id}            { 
+                        list->StartPrePro(token::TK_MACRO_OBJECT); 
+                        std::string* str = new std::string(yytext);
+                        list->SetMacroName(str);
+                        BEGIN(MACRO_CONTENT);
+                    }
+    {id}[(]         { 
+                        list->StartPrePro(token::TK_MACRO_FUNCTION);
+                        std::string tmp(yytext);
+                        std::string* str = new std::string(tmp.substr(0, yyleng - 1));
+                        list->SetMacroName(str);
+                        BEGIN(ARGUMENT);
+                    }
+    .               { list->Error("Unsupported macro"); }
+}
+<ARGUMENT>{
+    [)]             { BEGIN(MACRO_CONTENT); }
+    \n              { list->LineBreak(); list->Error("')' required"); BEGIN(INITIAL); }
+    \\\n            { list->LineBreak(); }
+
+    {blank}+
+    [,]             { list->AddMacroComma(); }
+    {id}            { 
+                        std::string* str = new std::string(yytext);
+                        list->AddMacroArg(str);
+                    }
+    .               { list->Error("Unsupported macro"); }
+}
+<MACRO_CONTENT>{
+    [^\\\n]+        { string_buffer += yytext; }
+    \n              {
+                        list->LineBreak();
+                        std::string* str = new std::string(string_buffer);
+                        list->SetMacroContent(str);
+                        BEGIN(INITIAL);
+                    }
+    ([\x81-\x9f\xe0-\xef][\x40-\x7e\x80-\xfc])+ { string_buffer += yytext; }
+    \\\n            { list->LineBreak(); }
+    \\[^\n]         { string_buffer += yytext; }
+}
+<IF>{
+    \n              { list->LineBreak(); BEGIN(INITIAL); }
+    \\\n            { list->LineBreak(); }
+    {blank}+        { list->AddIFSpace(); }
+
+    [!%&()*+\-/:<=>?\^|~]  { list->AddIFExpr((token)yytext[0]); }
+
+    "&&"            { list->AddIFExpr(token::TK_LOGAND); }
+    "||"            { list->AddIFExpr(token::TK_LOGOR); }
+    "=="            { list->AddIFExpr(token::TK_EQ); }
+    "!="            { list->AddIFExpr(token::TK_NE); }
+    ">="            { list->AddIFExpr(token::TK_GE); }
+    "<="            { list->AddIFExpr(token::TK_LE); }
+    "<<"            { list->AddIFExpr(token::TK_LSHIFT); }
+    ">>"            { list->AddIFExpr(token::TK_RSHIFT); }
+
+    "defined"       { list->AddIFExpr(token::TK_DEFINED); }
+
+    {decimal}{long}?  {   
+                        errno = 0;
+                        long n = strtol(yytext, NULL, 10);
+                        if(n < LONG_MIN || n > LONG_MAX || errno == ERANGE)
+                            list->Error("Out of 32bit");
+                        list->AddIFINT32(n);
+                    }
+
+    {decimal}{ulong}    {   
+                            errno = 0;
+                            unsigned long n = strtoul(yytext, NULL, 10);
+                            if(n < 0 || n > ULONG_MAX || errno == ERANGE)
+                                list->Error("Out of 32bit");
+                            list->AddIFUINT32(n);
+                        }
+
+    {decimal}{llong}    {   
+                            errno = 0;
+                            long long n = strtoll(yytext, NULL, 10);
+                            if(n < LONG_LONG_MIN || n > LONG_LONG_MAX || errno == ERANGE)
+                                list->Error("Out of 64bit");
+                            list->AddIFINT64(n);
+                        } 
+
+    {decimal}{ullong}   {   
+                            errno = 0;
+                            unsigned long long n = strtoull(yytext, NULL, 10);
+                            if(n < 0 || n > ULONG_LONG_MAX || errno == ERANGE)
+                                list->Error("Out of 64bit");
+                            list->AddIFUINT64(n);
+                        }
+
+    {hex}{long}?  {   
+                    errno = 0;
+                    long n = strtol(yytext, NULL, 16);
+                    if(n < LONG_MIN || n > LONG_MAX || errno == ERANGE)
+                        list->Error("Out of 32bit");
+                    list->AddIFINT32(n);
+                }
+
+    {hex}{ulong}    {   
+                        errno = 0;
+                        unsigned long n = strtoul(yytext, NULL, 16);
+                        if(n < 0 || n > ULONG_MAX || errno == ERANGE)
+                            list->Error("Out of 32bit");
+                        list->AddIFUINT32(n);
+                    }
+
+    {hex}{llong}    {   
+                        errno = 0;
+                        long long n = strtoll(yytext, NULL, 16);
+                        if(n < LONG_LONG_MIN || n > LONG_LONG_MAX || errno == ERANGE)
+                            list->Error("Out of 64bit");
+                        list->AddIFINT64(n);
+                    }  
+
+    {hex}{ullong}   {   
+                        errno = 0;
+                        unsigned long long n = strtoull(yytext, NULL, 16);
+                        if(n < 0 || n > ULONG_LONG_MAX || errno == ERANGE)
+                            list->Error("Out of 64bit");
+                        list->AddIFUINT64(n);
+                    }                          
+
+    {octal}{long}?  {   
+                        errno = 0;
+                        long n = strtol(yytext, NULL, 8);
+                        if(n < LONG_MIN || n > LONG_MAX || errno == ERANGE)
+                            list->Error("Out of 32bit");
+                        list->AddIFINT32(n);
+                    }
+
+    {octal}{ulong}  {   
+                        errno = 0;
+                        unsigned long n = strtoul(yytext, NULL, 8);
+                        if(n < 0 || n > ULONG_MAX || errno == ERANGE)
+                            list->Error("Out of 32bit");
+                        list->AddIFUINT32(n);
+                    }
+
+    {octal}{llong}  {   
+                        errno = 0;
+                        long long n = strtoll(yytext, NULL, 8);
+                        if(n < LONG_LONG_MIN || n > LONG_LONG_MAX || errno == ERANGE)
+                            list->Error("Out of 64bit");
+                        list->AddIFINT64(n);
+                    }  
+
+    {octal}{ullong} {   
+                        errno = 0;
+                        unsigned long long n = strtoull(yytext, NULL, 8);
+                        if(n < 0 || n > ULONG_LONG_MAX || errno == ERANGE)
+                            list->Error("Out of 64bit");
+                        list->AddIFUINT64(n);
+                    }
+
+    {id}            {
+                        std::string* str = new std::string(yytext);
+                        list->AddIFIDENTIFIER(str);
+                    }
+    .               { list->Error("UnSupported macro"); }
+}
+<INCLUDE>{
+    \n              { list->LineBreak(); BEGIN(INITIAL); }
+    \\\n            { list->LineBreak(); }
+
+    \<{id}\>        {   
+                        std::string* str = new std::string(yytext); 
+                        list->SetIncludeFile(str);
+                    }
+    \"{id}\"        {   
+                        std::string* str = new std::string(yytext); 
+                        list->SetIncludeFile(str);
+                    }
+    .               { list->Error("UnSupported format"); }
+}

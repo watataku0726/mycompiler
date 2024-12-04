@@ -6,7 +6,7 @@
 #include <cfloat>
 #include "Token.h"
 
-#define yyterminate() 
+#define yyterminate() return;
 //character   [ !"#$%&()*+,\-./0-9:;<=>\?@A-Z\[\]\^_`a-z{|}~]
 %}
 
@@ -31,54 +31,72 @@ character   [^\n]
 %x C_COMMENT
 %x CPP_COMMENT
 %x STRING
+%x PREPROCESSOR
+%x MACRO
+%x INCLUDE
+%x IF
+%x MACRO_CONTENT
+%x ARGUMENT
 
+%{
+#define YY_USER_ACTION list->Step(yyleng);
+%}
 %%
 %{
     typedef Token::Type token;
     std::string string_buffer;
 %}
 <INITIAL>{
-    \0              return;
-    \n              {list->LineBreak();}
-    "//"            {BEGIN(CPP_COMMENT);}
-    "/*"            {BEGIN(C_COMMENT);}
+    \n              { list->AddLineBreakToken(); list->LineBreak(); }
+    "//"            { BEGIN(CPP_COMMENT); }
+    "/*"            { BEGIN(C_COMMENT); }
 
-    "auto"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_AUTO, str); }
-    "break"         { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_BREAK, str); }
-    "case"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_CASE, str); }
-    "char"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_CHAR, str); }
-    "const"         { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_CONST, str); }
-    "continue"      { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_CONTINUE, str); }
-    "default"       { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_DEFAULT, str); }
-    "do"            { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_DO, str); }
-    "double"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_DOUBLE, str); }
-    "else"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_ELSE, str); }
-    "enum"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_ENUM, str); }
-    "extern"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_EXTERN, str); }
-    "float"         { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_FLOAT, str); }
-    "for"           { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_FOR, str); }
-    "goto"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_GOTO, str); }
-    "if"            { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_IF, str); }
-    "int"           { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_INT, str); }
-    "long"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_LONG, str); }
-    "register"      { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_REGISTER, str); }
-    "return"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_RETURN, str); }
-    "signed"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_SIGNED, str); }
-    "sizeof"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_SIZEOF, str); }
-    "short"         { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_SHORT, str); }
-    "static"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_STATIC, str); }
-    "struct"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_STRUCT, str); }
-    "switch"        { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_SWITCH, str); }
-    "typedef"       { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_TYPEDEF, str); }
-    "union"         { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_UNION, str); }
-    "unsigned"      { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_UNSIGNED, str); }
-    "void"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_VOID, str); }
-    "volatile"      { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_VOLATILE, str); }
-    "while"         { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_WHILE, str); }
+    "auto"          { list->AddToken(token::TK_AUTO); }
+    "break"         { list->AddToken(token::TK_BREAK); }
+    "case"          { list->AddToken(token::TK_CASE); }
+    "char"          { list->AddToken(token::TK_CHAR); }
+    "const"         { list->AddToken(token::TK_CONST); }
+    "continue"      { list->AddToken(token::TK_CONTINUE); }
+    "default"       { list->AddToken(token::TK_DEFAULT); }
+    "do"            { list->AddToken(token::TK_DO); }
+    "double"        { list->AddToken(token::TK_DOUBLE); }
+    "else"          { list->AddToken(token::TK_ELSE); }
+    "enum"          { list->AddToken(token::TK_ENUM); }
+    "extern"        { list->AddToken(token::TK_EXTERN); }
+    "float"         { list->AddToken(token::TK_FLOAT); }
+    "for"           { list->AddToken(token::TK_FOR); }
+    "goto"          { list->AddToken(token::TK_GOTO); }
+    "if"            { list->AddToken(token::TK_IF); }
+    "int"           { list->AddToken(token::TK_INT); }
+    "long"          { list->AddToken(token::TK_LONG); }
+    "register"      { list->AddToken(token::TK_REGISTER); }
+    "return"        { list->AddToken(token::TK_RETURN); }
+    "signed"        { list->AddToken(token::TK_SIGNED); }
+    "sizeof"        { list->AddToken(token::TK_SIZEOF); }
+    "short"         { list->AddToken(token::TK_SHORT); }
+    "static"        { list->AddToken(token::TK_STATIC); }
+    "struct"        { list->AddToken(token::TK_STRUCT); }
+    "switch"        { list->AddToken(token::TK_SWITCH); }
+    "typedef"       { list->AddToken(token::TK_TYPEDEF); }
+    "union"         { list->AddToken(token::TK_UNION); }
+    "unsigned"      { list->AddToken(token::TK_UNSIGNED); }
+    "void"          { list->AddToken(token::TK_VOID); }
+    "volatile"      { list->AddToken(token::TK_VOLATILE); }
+    "while"         { list->AddToken(token::TK_WHILE); }
         
-    "true"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_TRUE, str); }
-    "false"         { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_FALSE, str); }
-    "bool"          { std::string* str = new std::string(yytext); list->AddKEYWORD(token::TK_BOOL, str); }
+    "true"          { list->AddToken(token::TK_TRUE); }
+    "false"         { list->AddToken(token::TK_FALSE); }
+    "bool"          { list->AddToken(token::TK_BOOL); }
+    "nullptr"       { list->AddToken(token::TK_NULLPTR); }
+
+    "define"        { list->AddToken(token::TK_DEFINE); }    
+    "undef"         { list->AddToken(token::TK_UNDEF); }
+    "elif"          { list->AddToken(token::TK_ELIF); }
+    "ifdef"         { list->AddToken(token::TK_IFDEF); }
+    "ifndef"        { list->AddToken(token::TK_IFNDEF); }
+    "endif"         { list->AddToken(token::TK_ENDIF); }
+    "defined"       { list->AddToken(token::TK_DEFINED); }
+    "include"       { list->AddToken(token::TK_INCLUDE); }
 
     \\\n            {list->LineBreak(); }
 
@@ -111,123 +129,153 @@ character   [^\n]
     {blank}+   
 
     {decimal}{long}?  {   
-                        errno = 0;
+                        /*errno = 0;
                         long n = strtol(yytext, NULL, 10);
                         if(n < LONG_MIN || n > LONG_MAX || errno == ERANGE)
                             list->Error("Out of 32bit");
-                        list->AddINT32(n);
+                        list->AddINT32(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_INT32_DEC, str);
                     }
 
     {decimal}{ulong}    {   
-                            errno = 0;
+                            /*errno = 0;
                             unsigned long n = strtoul(yytext, NULL, 10);
                             if(n < 0 || n > ULONG_MAX || errno == ERANGE)
                                 list->Error("Out of 32bit");
-                            list->AddUINT32(n);
+                            list->AddUINT32(n);*/
+                            std::string* str = new std::string(yytext);
+                            list->AddNUMBER(token::TK_UINT32_DEC, str);
                         }
 
     {decimal}{llong}    {   
-                            errno = 0;
+                            /*errno = 0;
                             long long n = strtoll(yytext, NULL, 10);
                             if(n < LONG_LONG_MIN || n > LONG_LONG_MAX || errno == ERANGE)
                                 list->Error("Out of 64bit");
-                            list->AddINT64(n);
+                            list->AddINT64(n);*/
+                            std::string* str = new std::string(yytext);
+                            list->AddNUMBER(token::TK_INT64_DEC, str);
                         } 
 
     {decimal}{ullong}   {   
-                            errno = 0;
+                            /*errno = 0;
                             unsigned long long n = strtoull(yytext, NULL, 10);
                             if(n < 0 || n > ULONG_LONG_MAX || errno == ERANGE)
                                 list->Error("Out of 64bit");
-                            list->AddUINT64(n);
+                            list->AddUINT64(n);*/
+                            std::string* str = new std::string(yytext);
+                            list->AddNUMBER(token::TK_UINT64_DEC, str);
                         }
 
     {hex}{long}?  {   
-                    errno = 0;
+                    /*errno = 0;
                     long n = strtol(yytext, NULL, 16);
                     if(n < LONG_MIN || n > LONG_MAX || errno == ERANGE)
                         list->Error("Out of 32bit");
-                    list->AddINT32(n);
+                    list->AddINT32(n);*/
+                    std::string* str = new std::string(yytext);
+                    list->AddNUMBER(token::TK_INT32_HEX, str);
                 }
 
     {hex}{ulong}    {   
-                        errno = 0;
+                        /*errno = 0;
                         unsigned long n = strtoul(yytext, NULL, 16);
                         if(n < 0 || n > ULONG_MAX || errno == ERANGE)
                             list->Error("Out of 32bit");
-                        list->AddUINT32(n);
+                        list->AddUINT32(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_UINT32_HEX, str);
                     }
 
     {hex}{llong}    {   
-                        errno = 0;
+                        /*errno = 0;
                         long long n = strtoll(yytext, NULL, 16);
                         if(n < LONG_LONG_MIN || n > LONG_LONG_MAX || errno == ERANGE)
                             list->Error("Out of 64bit");
-                        list->AddINT64(n);
+                        list->AddINT64(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_INT64_HEX, str);
                     }  
 
     {hex}{ullong}   {   
-                        errno = 0;
+                        /*errno = 0;
                         unsigned long long n = strtoull(yytext, NULL, 16);
                         if(n < 0 || n > ULONG_LONG_MAX || errno == ERANGE)
                             list->Error("Out of 64bit");
-                        list->AddUINT64(n);
+                        list->AddUINT64(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_UINT64_HEX, str);
                     }                          
 
     {octal}{long}?  {   
-                        errno = 0;
+                        /*errno = 0;
                         long n = strtol(yytext, NULL, 8);
                         if(n < LONG_MIN || n > LONG_MAX || errno == ERANGE)
                             list->Error("Out of 32bit");
-                        list->AddINT32(n);
+                        list->AddINT32(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_INT32_OCT, str);
                     }
 
     {octal}{ulong}  {   
-                        errno = 0;
+                        /*errno = 0;
                         unsigned long n = strtoul(yytext, NULL, 8);
                         if(n < 0 || n > ULONG_MAX || errno == ERANGE)
                             list->Error("Out of 32bit");
-                        list->AddUINT32(n);
+                        list->AddUINT32(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_UINT32_OCT, str);
                     }
 
     {octal}{llong}  {   
-                        errno = 0;
+                        /*errno = 0;
                         long long n = strtoll(yytext, NULL, 8);
                         if(n < LONG_LONG_MIN || n > LONG_LONG_MAX || errno == ERANGE)
                             list->Error("Out of 64bit");
-                        list->AddINT64(n);
+                        list->AddINT64(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_INT64_OCT, str);
                     }  
 
     {octal}{ullong} {   
-                        errno = 0;
+                        /*errno = 0;
                         unsigned long long n = strtoull(yytext, NULL, 8);
                         if(n < 0 || n > ULONG_LONG_MAX || errno == ERANGE)
                             list->Error("Out of 64bit");
-                        list->AddUINT64(n);
+                        list->AddUINT64(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_UINT64_OCT, str);
                     }
 
     {float}         {
-                        errno = 0;
+                        /*errno = 0;
                         double n = strtod(yytext, NULL);
                         if(n < DBL_MIN || n > DBL_MAX || errno == ERANGE)
                             list->Error("Out of 64bit");
-                        list->AddFLOAT64(n);
+                        list->AddFLOAT64(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_FLOAT64, str);
                     }
 
     {float}[lL]     {
-                        errno = 0;
+                        /*errno = 0;
                         long double n = strtold(yytext, NULL);
                         if(n < LDBL_MIN || n > LDBL_MAX || errno == ERANGE)
                             list->Error("Out of 64bit");
-                        list->AddFLOAT64(n);
+                        list->AddFLOAT64(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_FLOAT64, str);
                     }
 
     {float}[fF]     {
-                        errno = 0;
+                        /*errno = 0;
                         float n = strtof(yytext, NULL);
                         if(n < FLT_MIN || n > FLT_MAX || errno == ERANGE)
                             list->Error("Out of 32bit");
-                        list->AddFLOAT32(n);
+                        list->AddFLOAT32(n);*/
+                        std::string* str = new std::string(yytext);
+                        list->AddNUMBER(token::TK_FLOAT32, str);
                     }
 
     '{character}'   {
@@ -247,7 +295,7 @@ character   [^\n]
                         string_buffer.clear();
                         BEGIN(STRING);
                     }
-    .               { list->Error("Unknown character : \"" + std::string(yytext) + "\""); }
+    .               { list->AddUnknownToken(yytext[0]); /*list->Error("Unknown character : \"" + std::string(yytext) + "\"");*/ }
 }
 <STRING>{
     [^\\\n"]+       { string_buffer += yytext; }
