@@ -379,6 +379,7 @@ void TokenList::PreProcessor() {
     Token::Type type;
     bool erasue;
     State state = State::INITIAL;
+    Token* hash = nullptr;
 
     while(1) {
         //std::cout << type << " " << state << std::endl;
@@ -396,7 +397,10 @@ void TokenList::PreProcessor() {
                 } else if(type == Token::Type::TK_HASH) {
                     if(prev == nullptr || IS_TK_LINEBREAK(prev->GetType())) {
                         state = State::PREPRO;
-                        erasue = true;
+                        hash = token;
+                        prev->SetNext(token->GetNext());
+                        token = prev;
+                        //erasue = true;
                     } else 
                         Error(token->GetLine(), token->GetStep(), "Unsupported character : \"#\"");
                     
@@ -442,7 +446,13 @@ void TokenList::PreProcessor() {
                         std::string str;
                         token->GetContent(str);
                         Error(token->GetLine(), token->GetStep(), "invalid preprocessing directive: #" + str);
-                        GotoNextLineBreak(prev, token);
+                        //GotoNextLineBreak(prev, token);
+                        //Token* tmp = new Token((Token::Type)('#'), 0, prev->GetLine() + 1, 0);
+                        //prev->SetNext(tmp);
+                        //tmp->SetNext(token);
+                        prev->SetNext(hash);
+                        hash->SetNext(token);
+                        prev = hash;
                         state = State::INITIAL;
                     }    
                     }
@@ -491,6 +501,8 @@ void TokenList::PreProcessor() {
         }
 
         if(erasue) {
+            delete hash;
+            hash = nullptr;
             if(prev == nullptr) {
                 mHead = token->GetNext();
                 delete token;
@@ -505,7 +517,7 @@ void TokenList::PreProcessor() {
             token = token->GetNext();
         }
     }
-#if(0)
+#if !defined(NDEBUG)
     for(auto mac : mMacroTable) {
         std::cout << mac.first << "\n\t";
         Token* tmp = mac.second->head;
@@ -835,7 +847,7 @@ void TokenList::ConvertPrePro2ID(Token* prev, Token*& token) {
     if(IS_TK_PREPRO(type)) {
         std::string* str = new std::string();
         switch(type) {
-            case Token::Type::TK_DEFINE:    *str = "define"; break;
+            case Token::Type::TK_DEFINE:    *str = "define";  break;
             case Token::Type::TK_UNDEF:     *str = "undef"; break;
             case Token::Type::TK_ELIF:      *str = "elif"; break;
             case Token::Type::TK_IFDEF:     *str = "ifdef"; break;
@@ -1025,7 +1037,6 @@ void TokenList::DeleteTokens(std::vector<Token*>& vec){
     vec.clear();
 }
 
-
 Token* TokenList::CopyTokens(Token* head, Token*& out) {
     Token *ret = nullptr;
     if(head != nullptr) {
@@ -1046,15 +1057,18 @@ Token* TokenList::CopyTokens(Token* head, Token*& out) {
     return ret;
 }
 
-Token* TokenList::PastTokens(Token* opr1, Token* opr2) {
-    std::string* str = new std::string(""), str1 = "", str2 = "";
+TokenList* TokenList::PastTokens(Token* opr1, Token* opr2) {
+    std::string str = "", str1 = "", str2 = "";
+    TokenList* list = new TokenList();
     if(!IS_TK_LINEBREAK(opr1->GetType()))
         opr1->GetContent(str1);
     if(!IS_TK_LINEBREAK(opr2->GetType()))
         opr2->GetContent(str2);
-    *str = str1 + str2;
-    //std::cout << *str << std::endl;
-    return new Token(Token::Type::TK_IDNETIFIER, str,opr1->GetLine(), opr1->GetStep());
+    str = str1 + str2;
+    ScanString(str, list);
+
+    return list;//new Token(Token::Type::TK_COMBINED_ID, str,opr1->GetLine(), opr1->GetStep());
+    //return new Token(Token::Type::TK_IDNETIFIER, str,opr1->GetLine(), opr1->GetStep());
 }
 
 bool TokenList::ReplaceToken(Token* prev, Token*& token) {
@@ -1165,10 +1179,13 @@ bool TokenList::ReplaceToken(Token* prev, Token*& token) {
                         tmp5->SetNext(tmp4->GetNext());
                         delete tmp4;
                         tmp4 = tmp5->GetNext();
+                        if(tmp4 == nullptr)
+                            break;
                     }
 
                     tmp3 = tmp4;
                     tmp4 = tmp4->GetNext();
+                    
                 }
                 start = start->GetNext();
                 DeleteTokens(vec);
@@ -1179,52 +1196,70 @@ bool TokenList::ReplaceToken(Token* prev, Token*& token) {
         }
     }
 
-    if(ret) {        
-        Token tk(Token::Type::START_TOKEN, 0, 0, 0);
-        Token* tail = nullptr, *tmp = start, *pretail = nullptr;
-        tk.SetNext(start);
-        start = &tk;
-        tail = start;
-        while(1) {
-            if(tmp == nullptr)
-                break;
-            
-            if(tmp->GetType() == Token::Type::TK_DOUBLEHASH) {
-                Token* tmp2 = tmp->GetNext();
-                if(tmp2 == nullptr) {
-                    Error(tmp->GetLine(), tmp->GetStep(), "'##' cannot appear at either end of a macro expansion");
-                } else if(tmp2->GetType() == Token::Type::TK_DOUBLEHASH) {
-                    delete tmp;
-                    tail->SetNext(tmp2);
-                    tmp = tail;
-                    tail = pretail;
-                } else {
-                    if(tail->GetType() == Token::Type::START_TOKEN) {
+    if(ret) {              
+        Token* tmp = start;
+        if(tmp == nullptr) {
+            prev->SetNext(token->GetNext());
+            delete token;
+            token = prev;
+        } else {
+            //std::cout << "owata" << std::endl;
+            Token* tail = nullptr,  *pretail = nullptr;
+            Token tk(Token::Type::START_TOKEN, 0, 0, 0);
+            tk.SetNext(start);
+            start = &tk;
+            tail = start;
+            //std::cout << "owata" << std::endl;
+            while(1) {
+                if(tmp == nullptr)
+                    break;
+                //std::cout << "owaeta" << std::endl;
+                if(tmp->GetType() == Token::Type::TK_DOUBLEHASH) {
+                    Token* tmp2 = tmp->GetNext();
+                    if(tmp2 == nullptr) {
+                        Error(tmp->GetLine(), tmp->GetStep(), "'##' cannot appear at either end of a macro expansion");
+                    } else if(tmp2->GetType() == Token::Type::TK_DOUBLEHASH) {
                         delete tmp;
                         tail->SetNext(tmp2);
                         tmp = tail;
-                        tail = nullptr;
-                        //std::cout << "OK2" << std::endl;
-                    } else {
-                        //std::cout << "OK" << std::endl;
-                        Token* tmp3 = PastTokens(tail, tmp2);
-                        tmp3->SetNext(tmp2->GetNext());
-                        pretail->SetNext(tmp3);
-                        delete tmp, tmp2, tail;
                         tail = pretail;
-                        tmp = tmp3;
+                    } else {
+                        if(tail->GetType() == Token::Type::START_TOKEN) {
+                            delete tmp;
+                            tail->SetNext(tmp2);
+                            tmp = tail;
+                            tail = nullptr;
+                            //std::cout << "OK2" << std::endl;
+                        } else {
+                            //std::cout << "OK" << std::endl;
+                            TokenList* list = PastTokens(tail, tmp2);
+                            if(list->mTail->GetType() != Token::Type::START_TOKEN) {
+                                list->mTail->SetNext(tmp2->GetNext());
+                                pretail->SetNext(list->mHead->GetNext());
+                                list->mHead->SetNext(nullptr);
+                                delete tmp, tmp2, tail;
+                                tail = pretail;
+                                tmp = list->mTail;
+                            } 
+                            /*tmp3->SetNext(tmp2->GetNext());
+                            pretail->SetNext(tmp3);
+                            delete tmp, tmp2, tail;
+                            tail = pretail;
+                            tmp = tmp3;*/
+                            delete list;
+                        }
                     }
                 }
+                pretail = tail;
+                tail = tmp;
+                tmp = tail->GetNext();
             }
-            pretail = tail;
-            tail = tmp;
-            tmp = tail->GetNext();
+            start = start->GetNext();
+            prev->SetNext(start);
+            tail->SetNext(token->GetNext());
+            delete token;
+            token = prev;
         }
-        start = start->GetNext();
-        prev->SetNext(start);
-        tail->SetNext(token->GetNext());
-        delete token;
-        token = prev;
     }
 
     return ret;

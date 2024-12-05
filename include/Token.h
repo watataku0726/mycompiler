@@ -34,6 +34,7 @@ YY_DECL;
 
 bool ScanBegin(const std::string& filename);
 void ScanEnd();
+void ScanString(const std::string& str, TokenList* list);
 
 class Token {
 public:
@@ -147,10 +148,11 @@ public:
         TK_FLOAT64,
         NUMBER_END = 0x300,
 
-        TK_IDNETIFIER = 0x500, // [_a-zA-Z][_a-zA-Z0-9]*
         TK_STRING = 0x400,
         TK_INT8,
         TK_BOOLEAN,
+
+        TK_IDNETIFIER = 0x500, // [_a-zA-Z][_a-zA-Z0-9]*
 
         START_PREPROCESSOR = 0x601,
         TK_DEFINE,
@@ -331,7 +333,7 @@ private:
     bool ReplaceToken(Token* prev, Token*& token);
     void DeleteTokens(std::vector<Token*>& vec);
     Token* CopyTokens(Token* head, Token*& out);
-    Token* PastTokens(Token* opr1, Token* opr2);
+    TokenList* PastTokens(Token* opr1, Token* opr2);
     
     void GotoNextLineBreak(Token* prev, Token*& token);
     void ConvertPrePro2ID(Token* prev, Token*& token);

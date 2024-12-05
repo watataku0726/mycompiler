@@ -341,6 +341,7 @@ character   [^\n]
     [^\n]*          
     \n              {
                         list->LineBreak();
+                        list->AddLineBreakToken();
                         BEGIN(INITIAL);
                     }
 }
@@ -363,5 +364,11 @@ bool ScanBegin(const std::string& filename) {
 
 void ScanEnd() {
     fclose(yyin);
+    yylex_destroy();
+}
+
+void ScanString(const std::string& str, TokenList* list) {
+    yy_scan_string(str.c_str());
+    PreLex(list);
     yylex_destroy();
 }

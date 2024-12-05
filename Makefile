@@ -19,7 +19,14 @@ all :
 	@mkdir -p $(YY_SRC) $(BIN)
 #	@$(BISON) -ra -o $(BISON_OUTPUT) $(BISON_SOURCE)
 	@$(FLEX) -o $(FLEX_OUTPUT) $(FLEX_SOUCRCE)
-	@$(CC) -DNDEBUG $(OPTIMIZE) -I$(INCLUDE) -I$(YY_SRC) -o $(BIN)/$(TARGET) $(SOURCES) 
+	@$(CC)  -DNDEBUG $(OPTIMIZE) -I$(INCLUDE) -I$(YY_SRC) -o $(BIN)/$(TARGET) $(SOURCES) 
+
+debug :
+	@mkdir -p $(YY_SRC) $(BIN)
+#	@$(BISON) -ra -o $(BISON_OUTPUT) $(BISON_SOURCE)
+	@$(FLEX) -o $(FLEX_OUTPUT) $(FLEX_SOUCRCE)
+	@$(CC)  -g $(OPTIMIZE) -I$(INCLUDE) -I$(YY_SRC) -o $(BIN)/$(TARGET)_d $(SOURCES) 
+
 
 clean :
 	@rm -r $(YY_SRC) $(BIN)

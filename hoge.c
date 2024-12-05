@@ -24,14 +24,20 @@ int main(int argc, char** argv) {
 typedef int INT;
 INT i = 0;
 */
-#define i ##KUG + FUIG / 9 ## ## f
+#define i i##KUG + FUIG / 9 ## ## f
 #define PM #pm
-#define HOGE(i, ij, k, l, m)  ` k i ##  ##  m l 
+#define HOGE(i, ij, k, l, m)  ` k i ##  ##  m l ij ##  #k
+#define DEFINE #define 
+
+DEFINE HOG int
 #define FUGA(fuga, io)
+
+HOG
 //#define HOGE i ; 
-#undef HOG
+//#undef HOG
 
 int i;
-int INT = HOGE(1,2,3,4,5)
+int define = 0;
+int INT = HOGE(P,45UL,3,4,M )
 
 32UL 64ul
