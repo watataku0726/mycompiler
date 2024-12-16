@@ -147,6 +147,10 @@ public:
         TK_FLOAT32,
         TK_FLOAT64,
         NUMBER_END = 0x300,
+        TK_INT32,
+        TK_UINT32,
+        TK_INT64,
+        TK_UINT64,
 
         TK_STRING = 0x400,
         TK_INT8,
@@ -178,15 +182,15 @@ public:
 
 public:
     Token(Token* token);
-    Token(Type type, bool isReplace, unsigned line, int step);
-    Token(Type type, char value, unsigned line, int step);
-    Token(Type type, int value, unsigned line, int step);
-    Token(Type type, unsigned int value, unsigned line, int step);
-    Token(Type type, long long value, unsigned line, int step);
-    Token(Type type, unsigned long long value, unsigned line, int step);
-    Token(Type type, float value, unsigned line, int step);
-    Token(Type type, double value, unsigned line, int step);
-    Token(Type type, std::string* value, unsigned line, int step, bool isReplace = true);
+    Token(Type type, bool isReplace, unsigned line, int step, int length);
+    Token(Type type, char value, unsigned line, int step, int length);
+    Token(Type type, int value, unsigned line, int step, int length);
+    //Token(Type type, unsigned int value, unsigned line, int step);
+    //Token(Type type, long long value, unsigned line, int step);
+    //Token(Type type, unsigned long long value, unsigned line, int step);
+    //Token(Type type, float value, unsigned line, int step);
+    //Token(Type type, double value, unsigned line, int step);
+    Token(Type type, std::string* value, unsigned line, int step, int legth, bool isReplace = true);
     ~Token();
 
     void SetNext(Token* next) { mNext = next; }
@@ -195,6 +199,7 @@ public:
     Type GetType() const { return mType; }
     unsigned int GetLine() const { return mLine; }
     int GetStep() const { return mStep; }
+    int GetLength() const { return mLength; }
 
     void ChangeArg2Str() {
         if(IS_TK_ARGUMENT_REPLACE(mType))
@@ -203,11 +208,11 @@ public:
 
     char GetINT8() const { return mValue.charval; }
     int GetINT32() const { return mValue.sintval; }
-    unsigned int GetUINT32() const { return mValue.uintval; }
-    long long GetINT64() const { return mValue.slonglongval; }
-    unsigned long long GetUINT64() const { return mValue.ulonglongval; }
-    float GetFLOAT32() const { return mValue.floatval; }
-    double GetFLOAT64() const { return mValue.doubleval; }
+    //unsigned int GetUINT32() const { return mValue.uintval; }
+    //long long GetINT64() const { return mValue.slonglongval; }
+    //unsigned long long GetUINT64() const { return mValue.ulonglongval; }
+    //float GetFLOAT32() const { return mValue.floatval; }
+    //double GetFLOAT64() const { return mValue.doubleval; }
     const std::string& GetSTRING() const { return *(mValue.strval); }
 
     void GetContent(std::string& out);
@@ -215,17 +220,18 @@ protected:
     union {
         char charval;
         signed int sintval;
-        unsigned int uintval;
-        signed long long slonglongval;
-        unsigned long long ulonglongval;
-        float floatval;
-        double doubleval;
+        //unsigned int uintval;
+        //signed long long slonglongval;
+        //unsigned long long ulonglongval;
+        //float floatval;
+        //double doubleval;
         std::string* strval;
     } mValue;
     Token* mNext;
     Type mType;
     unsigned int mLine;
     int mStep;
+    int mLength;
     bool mIsReplace;
 };
 
@@ -257,7 +263,7 @@ public:
     unsigned GetLine() const { return mLine; }
     int GetStep() const { return mStep; }
     void LineBreak() { ++mLine; mStep = 0; }
-    void Step(int length = 0) { mStep += length; }
+    void Step(int length = 0) { mStep += length; mLength = length; }
     void Error(const std::string& str = "") { std::cerr << "error : line" << mLine << ":" << mStep << ": " << str << std::endl; ++mError; }
     void Error(unsigned line, int step, const std::string& str = "") {
         std::cerr << "error : line" << line << ":" << step << ": " << str << std::endl; ++mError;
@@ -269,6 +275,7 @@ public:
     void PrintTokens(std::stringstream& ss, bool number = false);
     void PreProcessor();
 
+    Token* Dequeue();
 public:
 #if(0)
     void StartPrePro(Token::Type type);
@@ -338,13 +345,17 @@ private:
     void GotoNextLineBreak(Token* prev, Token*& token);
     void ConvertPrePro2ID(Token* prev, Token*& token);
 
+    bool ConstExpr(Token* prev, Token*& token);
+
     void Define(Token* prev, Token*& token, Token::Type& type);
+    void If(Token* prev, Token*& token, State state);
 private:
     std::unordered_map<std::string, MacroContent*> mMacroTable;
     Token* mHead;
     Token* mTail;
     unsigned mLine;
     int mStep;
+    int mLength;
     unsigned mError;
     unsigned mWarning;
 };

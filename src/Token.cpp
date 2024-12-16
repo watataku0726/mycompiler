@@ -11,6 +11,7 @@ Token::Token(Token* token)
         mType = token->GetType();
         mLine = token->GetLine();
         mStep = token->GetStep();
+        mLength = token->GetLength();
         mIsReplace = token->IsReplace();
 
         if(IS_TK_IDNTIFIER(mType) || IS_TK_STRING(mType) || IS_TK_NUMBER(mType)) {
@@ -21,29 +22,30 @@ Token::Token(Token* token)
         mType = Token::Type::UNKNOWN_TOKEN;
         mLine = 0;
         mStep = 0;
+        mLength = 0;
         mIsReplace = false;
         mValue.sintval = 0;
     }
 }
 
-Token::Token(Type type, bool isReplace, unsigned line, int step)
-    :mType(type), mIsReplace(isReplace), mLine(line), mNext(nullptr), mStep(step)
+Token::Token(Type type, bool isReplace, unsigned line, int step, int length)
+    :mType(type), mIsReplace(isReplace), mLine(line), mNext(nullptr), mStep(step), mLength(length)
 {
     mValue.sintval = 0;
 }
 
-Token::Token(Type type, char value, unsigned line, int step)
-    :mType(type), mIsReplace(false), mLine(line), mNext(nullptr), mStep(step)
+Token::Token(Type type, char value, unsigned line, int step, int length)
+    :mType(type), mIsReplace(false), mLine(line), mNext(nullptr), mStep(step), mLength(length)
 {
     mValue.charval = value;
 }
 
-Token::Token(Type type, int value, unsigned line, int step)
-    :mType(type), mIsReplace(false), mLine(line), mNext(nullptr), mStep(step)
+Token::Token(Type type, int value, unsigned line, int step, int length)
+    :mType(type), mIsReplace(false), mLine(line), mNext(nullptr), mStep(step), mLength(length)
 {
     mValue.sintval = value;
 }
-
+/*
 Token::Token(Type type, unsigned int value, unsigned line, int step)
     :mType(type), mIsReplace(false), mLine(line), mNext(nullptr), mStep(step)
 {
@@ -73,9 +75,9 @@ Token::Token(Type type, double value, unsigned line, int step)
 {   
     mValue.doubleval = value;
 }
-
-Token::Token(Type type, std::string* value, unsigned line, int step, bool isReplace) 
-    :mType(type), mIsReplace(isReplace), mLine(line), mNext(nullptr), mStep(step)
+*/
+Token::Token(Type type, std::string* value, unsigned line, int step, int length, bool isReplace) 
+    :mType(type), mIsReplace(isReplace), mLine(line), mNext(nullptr), mStep(step), mLength(length)
 {
     mValue.strval = value;
 }
@@ -218,9 +220,9 @@ void Token::GetContent(std::string& out) {
 /*==========================================================================*/
 
 TokenList::TokenList()
-    :mLine(1), mError(0), mWarning(0)
+    :mLine(1), mError(0), mWarning(0), mLength(0)
 {
-    mHead = new Token(Token::Type::START_TOKEN, false, 0, 0);
+    mHead = new Token(Token::Type::START_TOKEN, false, 0, 0, 0);
     mTail = mHead;
 }
 
@@ -245,13 +247,13 @@ TokenList::~TokenList() {
 void TokenList::AddToken(Token::Type type) {
     Token* token;
     if(IS_TK_OPERATER(type)) 
-        token = new Token(type, false, mLine, mStep);
+        token = new Token(type, false, mLine, mStep, mLength);
     else if(IS_TK_KEYWORD(type))
-        token = new Token(type, true, mLine, mStep);
+        token = new Token(type, true, mLine, mStep, mLength);
     else if(IS_TK_PREPRO(type))
-        token = new Token(type, true, mLine, mStep);
+        token = new Token(type, true, mLine, mStep, mLength);
     else if(IS_TK_DEFINED(type))
-        token = new Token(type, true, mLine, mStep);
+        token = new Token(type, true, mLine, mStep, mLength);
     else
         return;
     //if(type == '(')
@@ -265,12 +267,12 @@ void TokenList::AddKEYWORD(Token::Type type, std::string* keyword) {
     if(IS_TK_KEYWORD(type)) 
         token = new Token(type, keyword, mLine, mStep);
     else
-        return;
+        return; 
 
     mTail->SetNext(token);
     mTail = token;
 }
-#endifvoid TokenList::AddINT32(Token::Type type, int value) {
+void TokenList::AddINT32(Token::Type type, int value) {
     Token* token = new Token(type, value, mLine, mStep);
 
     mTail->SetNext(token);
@@ -314,14 +316,14 @@ void TokenList::AddFLOAT64(double value) {
 #endif
 
 void TokenList::AddNUMBER(Token::Type type, std::string* str) {
-    Token* token = new Token(type, str, mLine, mStep, false);
+    Token* token = new Token(type, str, mLine, mStep, mLength, false);
 
     mTail->SetNext(token);
     mTail = token;
 }
 
 void TokenList::AddCHARACTER(char value) {
-    Token* token = new Token(Token::Type::TK_INT8, value, mLine, mStep);
+    Token* token = new Token(Token::Type::TK_INT8, value, mLine, mStep, mLength);
     
     mTail->SetNext(token);
     mTail = token;
@@ -340,38 +342,50 @@ void TokenList::AddSPECIALCHAR(char value) {
         case '0':   tmp = '\0'; break;
         default:     break;
     }
-    token = new Token(Token::Type::TK_INT8, tmp, mLine, mStep);
+    token = new Token(Token::Type::TK_INT8, tmp, mLine, mStep, mLength);
 
     mTail->SetNext(token);
     mTail = token;
 }
 
 void TokenList::AddSTRING(std::string* str) {
-    Token* token = new Token(Token::Type::TK_STRING, str, mLine, mStep, false);
+    Token* token = new Token(Token::Type::TK_STRING, str, mLine, mStep, mLength, false);
     
     mTail->SetNext(token);
     mTail = token;
 }
 
 void TokenList::AddIDENTIFIER(std::string* id) {
-    Token* token = new Token(Token::Type::TK_IDNETIFIER, id, mLine, mStep);
+    Token* token = new Token(Token::Type::TK_IDNETIFIER, id, mLine, mStep, mLength);
     //std::cout << *id << mStep << " " << mLine << std::endl;
     mTail->SetNext(token);
     mTail = token;
 }
 
 void TokenList::AddUnknownToken(char value) {
-    Token* token = new Token(Token::Type::UNKNOWN_TOKEN, value, mLine, mStep);
+    Token* token = new Token(Token::Type::UNKNOWN_TOKEN, value, mLine, mStep, mLength);
     
     mTail->SetNext(token);
     mTail = token;
 }
 
 void TokenList::AddLineBreakToken() {
-    Token* token = new Token(Token::Type::TK_LINEBREAK, false, mLine, mStep);
+    Token* token = new Token(Token::Type::TK_LINEBREAK, false, mLine, mStep, mLength);
 
     mTail->SetNext(token);
     mTail = token;
+}
+
+Token* TokenList::Dequeue() {
+    Token* token = mHead->GetNext();
+    if(token != nullptr) {
+        if(token == mTail) {
+            mTail = mHead;
+        }    
+        mHead->SetNext(token->GetNext());
+    }
+
+    return token;
 }
 
 void TokenList::PreProcessor() {
@@ -484,18 +498,22 @@ void TokenList::PreProcessor() {
             }
             case State::IF: {
 
+                state = State::INITIAL;
                 break;
             }
             case State::IFDEF: {
 
+                state = State::INITIAL;
                 break;
             }
             case State::IFNDEF: {
 
+                state = State::INITIAL;
                 break;
             }
             case State::INCLUDE: {
 
+                state = State::INITIAL;
                 break;
             }
         }
@@ -857,7 +875,7 @@ void TokenList::ConvertPrePro2ID(Token* prev, Token*& token) {
             default:    delete str; str == nullptr; break;
         }
         if(str) {
-            Token* tmp = new Token(Token::Type::TK_IDNETIFIER, str, token->GetLine(), token->GetStep());
+            Token* tmp = new Token(Token::Type::TK_IDNETIFIER, str, token->GetLine(), token->GetStep(), token->GetLength());
             tmp->SetNext(token->GetNext());
             prev->SetNext(tmp);
             delete token;
@@ -865,7 +883,7 @@ void TokenList::ConvertPrePro2ID(Token* prev, Token*& token) {
         }
     } else if(IS_TK_DEFINED(type)) {
         std::string* str = new std::string("defined");
-        Token* tmp = new Token(Token::Type::TK_IDNETIFIER, str, token->GetLine(), token->GetStep(), false);
+        Token* tmp = new Token(Token::Type::TK_IDNETIFIER, str, token->GetLine(), token->GetStep(), token->GetLength(), false);
         tmp->SetNext(token->GetNext());
         prev->SetNext(tmp);
         delete token;
@@ -874,7 +892,7 @@ void TokenList::ConvertPrePro2ID(Token* prev, Token*& token) {
 }
 
 void TokenList::RegObjectMacroTable(const std::string& name, Token* head) {
-    Token start(Token::Type::START_TOKEN, false, 0, 0);
+    Token start(Token::Type::START_TOKEN, false, 0, 0, 0);
     Token* prev = &start, *token = head;
     start.SetNext(head);
     bool error = false;
@@ -926,7 +944,7 @@ void TokenList::RegObjectMacroTable(const std::string& name, Token* head) {
 }
 
 void TokenList::RegFunctionMacroTable(const std::string& name, Argument* arglist, Token* head) {
-    Token start(Token::Type::START_TOKEN, false, 0, 0);
+    Token start(Token::Type::START_TOKEN, false, 0, 0, 0);
     Token* prev = &start, *token = head;
     int argNum = 0;
     start.SetNext(head);
@@ -942,7 +960,7 @@ void TokenList::RegFunctionMacroTable(const std::string& name, Argument* arglist
             if(token->IsReplace()) {
                 if(token->GetType() == arg->type) {
                     if(!IS_TK_IDNTIFIER(arg->type) || (IS_TK_IDNTIFIER(arg->type) && (token->GetSTRING() == arg->str))) {
-                        Token* tmp = new Token(Token::Type::TK_ARGUMENT_REPLACE, argNum, token->GetLine(), token->GetStep());
+                        Token* tmp = new Token(Token::Type::TK_ARGUMENT_REPLACE, argNum, token->GetLine(), token->GetStep(), token->GetLength());
                         tmp->SetNext(token->GetNext());
                         prev->SetNext(tmp);
                         delete token;
@@ -1135,7 +1153,7 @@ bool TokenList::ReplaceToken(Token* prev, Token*& token) {
             //std::cout << "owata" << std::endl;
             if(ret) {
                 Token* tmp3 = nullptr, *tmp4 = nullptr;
-                Token tk(Token::Type::START_TOKEN, 0, 0, 0);
+                Token tk(Token::Type::START_TOKEN, 0, 0, 0, 0);
                 CopyTokens(iter->second->head, tmp3);
                 tk.SetNext(tmp3);
                 tmp4 = tmp3;
@@ -1174,7 +1192,7 @@ bool TokenList::ReplaceToken(Token* prev, Token*& token) {
                             }
                             tmp5 = tmp5->GetNext();
                         }
-                        tmp5 = new Token(Token::Type::TK_STRING, str, tmp4->GetLine(), tmp4->GetStep());
+                        tmp5 = new Token(Token::Type::TK_STRING, str, tmp4->GetLine(), tmp4->GetStep(), token->GetLength());
                         tmp3->SetNext(tmp5);
                         tmp5->SetNext(tmp4->GetNext());
                         delete tmp4;
@@ -1205,7 +1223,7 @@ bool TokenList::ReplaceToken(Token* prev, Token*& token) {
         } else {
             //std::cout << "owata" << std::endl;
             Token* tail = nullptr,  *pretail = nullptr;
-            Token tk(Token::Type::START_TOKEN, 0, 0, 0);
+            Token tk(Token::Type::START_TOKEN, 0, 0, 0, 0);
             tk.SetNext(start);
             start = &tk;
             tail = start;
@@ -1263,4 +1281,157 @@ bool TokenList::ReplaceToken(Token* prev, Token*& token) {
     }
 
     return ret;
+}
+
+
+bool TokenList::ConstExpr(Token* prev, Token*& token) {
+    TokenList* list = new TokenList();
+    Token* tmp1 = nullptr, *tmp2 = nullptr;
+    int state = 0; // 0 : initial , 1 : defined, 2 : (, 3 : )
+    bool erase = false, error = false;
+    list->mHead->SetNext(token);
+    while(1) {
+        list->mTail = token;
+        if(token->GetNext() == nullptr) {
+            Error(prev->GetLine() + 1, 0, "unterminated #if");
+            delete list;
+            prev->SetNext(nullptr);
+            token = nullptr;
+            return false;
+        }
+        token = token->GetNext();
+        if(IS_TK_LINEBREAK(token->GetType())) {
+            prev->SetNext(token);
+            list->mTail->SetNext(nullptr);
+            break;
+        }
+    }
+    tmp1 = list->mHead;
+    tmp2 = list->mHead->GetNext();
+    while(tmp2 != nullptr) {
+        switch(state) {
+            // initial
+            case 0 : {
+                if(IS_TK_DEFINED(tmp2->GetType())) {
+                    state = 1;
+                    erase = true;
+                } else if(tmp2->IsReplace() && !ReplaceToken(tmp1, tmp2)) {
+                    ConvertPrePro2ID(tmp1, tmp2);
+                }
+                break;
+            }
+            //defined
+            case 1 : {
+                if(tmp2->IsReplace()) {
+                    std::string str;
+                    Token *tk;
+                    Token::Type type;
+                    tmp2->GetContent(str);
+                    type = (mMacroTable.find(str) == mMacroTable.end()) ? Token::Type::TK_FALSE : Token::Type::TK_TRUE;
+                    tk = new Token(type, false, tmp2->GetLine(), tmp2->GetStep(), tmp2->GetLength());
+                    tk->SetNext(tmp2->GetNext());
+                    tmp1->SetNext(tk);
+                    delete tmp2;
+                    tmp2 = tk;
+                    state = 0;
+                } else if(tmp2->GetType() == (Token::Type)('(')) {
+                    state = 2;
+                    erase = true;
+                } else {
+                    Error(tmp2->GetLine(), tmp2->GetStep(), "operator \"defined\" requires an identifier");
+                    error = true;
+                }
+                break;
+            }
+            // (
+            case 2 : {
+                if(tmp2->IsReplace()) {
+                    std::string str;
+                    Token *tk;
+                    Token::Type type;
+                    tmp2->GetContent(str);
+                    type = (mMacroTable.find(str) == mMacroTable.end()) ? Token::Type::TK_FALSE : Token::Type::TK_TRUE;
+                    tk = new Token(type, false, tmp2->GetLine(), tmp2->GetStep(), tmp2->GetLength());
+                    tk->SetNext(tmp2->GetNext());
+                    tmp1->SetNext(tk);
+                    delete tmp2;
+                    tmp2 = tk;
+                    state = 3;
+                } else {
+                    Error(tmp2->GetLine(), tmp2->GetStep(), "operator \"defined\" requires an identifier");
+                    error = true;
+                }
+                break;
+            }
+            // )
+            case 3 : {
+                if(tmp2->GetType() == (Token::Type)(')')) {
+                    state = 0;
+                    erase = true;
+                } else {
+                    Error(tmp2->GetLine(), tmp2->GetStep(), "missing ')' after \"defined\"");
+                    error = true;
+                }
+                break;
+            }
+        }
+        if(error)
+            break;
+
+        if(erase) {
+            tmp1->SetNext(tmp2->GetNext());
+            delete tmp2;
+            tmp2 = tmp1->GetNext();
+            erase = false;
+        } else {
+            tmp1 = tmp2;
+            tmp2 = tmp1->GetNext();
+        }
+    }
+    
+    if(!error) {
+        
+    }
+    delete list;
+    return error;
+}
+
+void TokenList::If(Token* prev, Token*& token, State state) {
+    bool isvalid = false;
+    switch(state) {
+        case State::IF: {
+            isvalid = ConstExpr(prev, token);
+            break;
+        }
+        case State::IFDEF: {
+            if(!token->IsReplace()) {
+                Error(token->GetLine(), token->GetStep(), "macro names must be identifiers");
+            } else {
+                std::string str;
+                token->GetContent(str);
+                isvalid = (mMacroTable.find(str) != mMacroTable.end());
+                GotoNextLineBreak(prev, token);
+                token = prev->GetNext();
+            }
+            break;
+        }
+        case State::IFNDEF: {
+            if(!token->IsReplace()) {
+                Error(token->GetLine(), token->GetStep(), "macro names must be identifiers");
+            } else {
+                std::string str;
+                token->GetContent(str);
+                isvalid = (mMacroTable.find(str) == mMacroTable.end());
+                GotoNextLineBreak(prev, token);
+                token = prev->GetNext();
+            }
+            break;
+        }
+        default:
+            return;
+    }
+
+    if(token == nullptr) {
+        return;
+    }
 }
