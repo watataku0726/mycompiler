@@ -5,6 +5,7 @@
 #include <climits>
 #include <cfloat>
 #include "Token.h"
+#include "TokenList.h"
 
 #define yyterminate() return;
 //character   [ !"#$%&()*+,\-./0-9:;<=>\?@A-Z\[\]\^_`a-z{|}~]
@@ -126,7 +127,7 @@ character   [^\n]
     "::"            { list->AddToken(token::TK_DOUBLECOLON); }
     "##"            { list->AddToken(token::TK_DOUBLEHASH); }
 
-    {blank}+   
+    {blank}+        { list->AddSpace(yyleng); } 
 
     {decimal}{long}?  {   
                         /*errno = 0;

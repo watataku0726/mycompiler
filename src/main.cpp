@@ -1,8 +1,10 @@
-#include "Token.h"
+#include "TokenList.h"
 #include <fstream>
 #include <ostream>
+#include <vector>
 #include "preparser.hh"
 #include "IntNode.h"
+
 
 
 int main(int argc, char** argv) {
@@ -13,7 +15,7 @@ int main(int argc, char** argv) {
     TokenList *list = new TokenList(); 
     PreLex(list);
     ScanEnd();
-#if(0)
+#if(1)
     list->PreProcessor();
     std::stringstream ss;
     list->PrintTokens(ss, true);
@@ -28,5 +30,7 @@ int main(int argc, char** argv) {
     delete list;
     std::cout << ret.String() << std::endl;
 #endif
+    std::cout << "//\n" << Token::GetNumbers() << std::endl;
     return 0;
 }
+

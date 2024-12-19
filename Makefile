@@ -26,7 +26,7 @@ debug :
 	@mkdir -p $(YY_SRC) $(BIN)
 	@$(BISON) -ra -o $(BISON_OUTPUT) $(BISON_SOURCE)
 	@$(FLEX) -o $(FLEX_OUTPUT) $(FLEX_SOUCRCE)
-	@$(CC)  -g $(OPTIMIZE) -I$(INCLUDE) -I$(YY_SRC) -o $(BIN)/$(TARGET)_d $(SOURCES) 
+	$(CC)  -g $(OPTIMIZE) -I$(INCLUDE) -I$(YY_SRC) -o $(BIN)/$(TARGET)_d $(SOURCES) 
 
 
 clean :

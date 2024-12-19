@@ -8,7 +8,7 @@ class TokenList;
 
 }
 %parse-param    { TokenList* list } 
-%parse-param    { Integer& ret }
+%parse-param    { Integer& ret  }
 %lex-param      { TokenList* list }
 
 %union {
@@ -58,16 +58,18 @@ class TokenList;
 #include <cstdlib>
 #include <cerrno>
 #include <climits>
+#include <vector>
 #include "Token.h"
+#include "TokenList.h"
 
-yy1::parser::token_type yylex(yy1::parser::semantic_type* yylval, TokenList* list);
+static yy1::parser::token_type yylex(yy1::parser::semantic_type* yylval, TokenList* list);
 }
 %%
 %start unit;
 
-unit    : error                     
+unit    : expr error                    { delete $1; }
         | expr                          { ret = $1->Calculate(list); delete $1; }
-
+    
 expr    : expr "&&" expr                { $$ = new IntNode(IntNode::OPCODE::OP_LOGAND, $1, $3); }
         | expr "||" expr                { $$ = new IntNode(IntNode::OPCODE::OP_LOGOR, $1, $3); }
         | expr "==" expr                { $$ = new IntNode(IntNode::OPCODE::OP_EQ, $1, $3); }
@@ -100,8 +102,7 @@ expr    : expr "&&" expr                { $$ = new IntNode(IntNode::OPCODE::OP_L
         | "uint64"                      { $$ = new IntNode($1); }
 %%
 
-yy1::parser::token_type yylex(yy1::parser::semantic_type* yylval, TokenList* list) {
-    
+static yy1::parser::token_type yylex(yy1::parser::semantic_type* yylval, TokenList* list) {
     while(1) {
         Token* token = list->Dequeue();
         if(token == nullptr) 
@@ -264,8 +265,6 @@ yy1::parser::token_type yylex(yy1::parser::semantic_type* yylval, TokenList* lis
             }
         }
     }
-    
-
 }
 
 void yy1::parser::error(const std::string& m) {
